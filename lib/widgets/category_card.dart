@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import '../utils/number_formater.dart';
 
-
 class CategoryCard extends StatelessWidget {
   final String category;
   final double spent;
@@ -63,10 +62,7 @@ class CategoryCard extends StatelessWidget {
               ),
               Text(
                 formatNumber(spent),
-                style: TextStyle(
-                  fontSize: spentSize,
-                  color: Colors.grey[700],
-                ),
+                style: TextStyle(fontSize: spentSize, color: Colors.grey[700]),
               ),
             ],
           ),
@@ -101,8 +97,12 @@ class _CustomReverseProgressBar extends StatelessWidget {
       borderRadius: BorderRadius.circular(borderRadius),
       child: Stack(
         children: [
-          Container(height: height, color: Colors.red.shade400),
-
+          // Фон — нейтральный светло-серый
+          Container(
+            height: height,
+            color: Colors.grey[200], //  мягкий фон
+          ),
+          // Заполнение — справа, градиент зелёный
           Align(
             alignment: Alignment.centerRight,
             child: FractionallySizedBox(
@@ -110,9 +110,8 @@ class _CustomReverseProgressBar extends StatelessWidget {
               child: Container(
                 height: height,
                 decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [Colors.red.shade400, Colors.green.shade500],
-                    stops: [0.0, 1.0],
+                  gradient: const LinearGradient(
+                    colors: [Color(0xFFC8E6C9), Color(0xFF4CAF50)],
                     begin: Alignment.centerLeft,
                     end: Alignment.centerRight,
                   ),
