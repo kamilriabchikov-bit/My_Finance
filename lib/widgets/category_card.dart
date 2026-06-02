@@ -5,7 +5,6 @@ class CategoryCard extends StatelessWidget {
   final String category;
   final double spent;
   final double limit;
-
   const CategoryCard({
     super.key,
     required this.category,
@@ -16,12 +15,10 @@ class CategoryCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final width = MediaQuery.sizeOf(context).width;
-
     final titleSize = (width * 0.072).clamp(16.0, 18.0);
     final needSize = (width * 0.085).clamp(26.0, 36.0);
     final spentSize = (width * 0.055).clamp(18.0, 24.0);
     final progressBarHeight = (width * 0.07).clamp(14.0, 24.0);
-
     final progress = limit > 0 ? (spent / limit).clamp(0.0, 1.0) : 0.0;
 
     return Container(
@@ -42,20 +39,18 @@ class CategoryCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Заголовок категории
           Text(
             category,
             style: TextStyle(fontSize: titleSize, color: Colors.grey[600]),
           ),
           const SizedBox(height: 12),
-
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
                 formatNumber(limit),
-                style: TextStyle(
-                  fontSize: needSize,
+                style: const TextStyle(
+                  fontSize: 26,
                   fontWeight: FontWeight.bold,
                   color: Colors.black,
                 ),
@@ -67,12 +62,10 @@ class CategoryCard extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 14),
-
-          // Прогресс-бар с закруглёнными краями
           _CustomReverseProgressBar(
             progress: progress,
             height: progressBarHeight,
-            borderRadius: 16, // скругление
+            borderRadius: 16,
           ),
         ],
       ),
@@ -84,7 +77,6 @@ class _CustomReverseProgressBar extends StatelessWidget {
   final double progress;
   final double height;
   final double borderRadius;
-
   const _CustomReverseProgressBar({
     required this.progress,
     required this.height,

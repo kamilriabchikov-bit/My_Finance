@@ -28,6 +28,7 @@ environment:
 # the latest version available on pub.dev. To see which dependencies have newer
 # versions available, run `flutter pub outdated`.
 dependencies:
+
   flutter:
     sdk: flutter
   intl: ^0.20.2
@@ -39,8 +40,15 @@ dependencies:
   cupertino_icons: ^1.0.8
 
 dev_dependencies:
+  flutter_native_splash: ^2.4.7
   flutter_test:
     sdk: flutter
+  flutter_launcher_icons: ^0.14.4
+
+flutter_icons:
+  android: true
+  ios: true
+  image_path: "assets/images/icon.png"
 
   # The "flutter_lints" package below contains a set of recommended lints to
   # encourage good coding practices. The lint set provided by the package is
@@ -59,6 +67,8 @@ flutter:
   # included with your application, so that you can use the icons in
   # the material Icons class.
   uses-material-design: true
+  assets:
+      - assets/images/
 
   # To add assets to your application, add an assets section, like this:
   # assets:
@@ -76,17 +86,32 @@ flutter:
   # "family" key with the font family name, and a "fonts" key with a
   # list giving the asset and other descriptors for the font. For
   # example:
-  # fonts:
-  #   - family: Schyler
-  #     fonts:
-  #       - asset: fonts/Schyler-Regular.ttf
-  #       - asset: fonts/Schyler-Italic.ttf
-  #         style: italic
-  #   - family: Trajan Pro
-  #     fonts:
-  #       - asset: fonts/TrajanPro.ttf
-  #       - asset: fonts/TrajanPro_Bold.ttf
-  #         weight: 700
+
+  fonts:
+    - family: GoshaSans
+      fonts:
+        - asset: assets/fonts/GoshaSans-Regular.otf
+          weight: 400
+        - asset: assets/fonts/GoshaSans-Bold.otf
+          weight: 700
+
+    - family: Starfall VAG Rounded
+      fonts:
+         - asset: assets/fonts/StarfallVAGRounded-Bold_0.ttf
+         - asset: assets/fonts/StarfallVAGRounded-Regular_0.ttf
+           weight: 400
+
+flutter_native_splash:
+  color: "#15293F"
+  image: "assets/images/icon.png"
+  android_12:
+    image: "assets/images/icon.png"
+    color: "#15293F"
+  ios: true
+  web: false
+  android: true
+  fullscreen: true
+
   #
   # For details regarding fonts from package dependencies,
   # see https://flutter.dev/to/font-from-package
