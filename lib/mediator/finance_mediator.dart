@@ -1,7 +1,7 @@
 import 'package:flutter/foundation.dart';
+import '../entity/budget_calculator.dart';
 import '../entity/category_classifier.dart';
 import '../database/app_database.dart';
-import '../entity/budget_calculator.dart';
 import '../models/budget_data.dart';
 
 class FinanceMediator extends ChangeNotifier {
@@ -16,9 +16,15 @@ class FinanceMediator extends ChangeNotifier {
   BudgetData _budgetData = BudgetData.empty();
   bool _loading = false;
 
+  // Списки транзакций за выбранный месяц
+  List<Income> _incomes = [];
+  List<Expense> _expenses = [];
+
   DateTime get selectedMonth => _selectedMonth;
   BudgetData get budgetData => _budgetData;
   bool get loading => _loading;
+  List<Income> get incomes => _incomes;
+  List<Expense> get expenses => _expenses;
 
   /// Загрузить (пересчитать) данные за конкретный месяц
   Future<void> loadMonth(DateTime month) async {
@@ -28,30 +34,32 @@ class FinanceMediator extends ChangeNotifier {
 
     try {
       // Доходы за месяц
-      final incomes = await _db.getIncomes();
-      final monthlyIncomes = incomes.where((i) {
+      final allIncomes = await _db.getIncomes();
+      _incomes = allIncomes.where((i) {
         final d = DateTime.fromMillisecondsSinceEpoch(i.date);
         return d.year == _selectedMonth.year && d.month == _selectedMonth.month;
-      });
-      final totalIncome =
-      monthlyIncomes.fold<double>(0.0, (sum, i) => sum + i.amount);
+      }).toList()
+        ..sort((a, b) => b.date.compareTo(a.date));
+
+      final totalIncome = _incomes.fold<double>(0.0, (sum, i) => sum + i.amount);
 
       // Лимиты 50/30/20
       final limits = BudgetCalculator.calculateLimits(totalIncome);
 
       // Расходы за месяц
-      final expenses = await _db.getExpenses();
-      final monthlyExpenses = expenses.where((e) {
+      final allExpenses = await _db.getExpenses();
+      _expenses = allExpenses.where((e) {
         final d = DateTime.fromMillisecondsSinceEpoch(e.date);
         return d.year == _selectedMonth.year && d.month == _selectedMonth.month;
-      });
+      }).toList()
+        ..sort((a, b) => b.date.compareTo(a.date));
 
       final spent = <String, double>{
         'Обязательные': 0.0,
         'Развлечения': 0.0,
         'Накопления': 0.0,
       };
-      for (final e in monthlyExpenses) {
+      for (final e in _expenses) {
         spent[e.category] = (spent[e.category] ?? 0.0) + e.amount;
       }
 

@@ -200,11 +200,108 @@ class _HomePageState extends State<HomePage> {
 }
 
 // СТРАНИЦА ИСТОРИИ
-class HistoryPage extends StatelessWidget {
+class HistoryPage extends StatefulWidget {
   const HistoryPage({super.key});
 
   @override
+  State<HistoryPage> createState() => _HistoryPageState();
+}
+
+class _HistoryPageState extends State<HistoryPage> {
+  final FinanceMediator _mediator = FinanceMediator();
+
+  @override
+  void initState() {
+    super.initState();
+    _mediator.addListener(_onMediatorChanged);
+    if (_mediator.incomes.isEmpty && _mediator.expenses.isEmpty) {
+      _mediator.loadMonth(_mediator.selectedMonth);
+    }
+  }
+
+  @override
+  void dispose() {
+    _mediator.removeListener(_onMediatorChanged);
+    super.dispose();
+  }
+
+  void _onMediatorChanged() {
+    if (mounted) setState(() {});
+  }
+
+  String _formatDate(int milliseconds) {
+    final date = DateTime.fromMillisecondsSinceEpoch(milliseconds);
+    return DateFormat('dd.MM.yyyy', 'ru_RU').format(date);
+  }
+
+  Future<void> _confirmDelete(BuildContext context, bool isIncome, int id) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Подтверждение'),
+        content: const Text('Удалить эту запись?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Отмена'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+            child: const Text('Удалить'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true && mounted) {
+      if (isIncome) {
+        await _mediator.deleteIncome(id);
+      } else {
+        await _mediator.deleteExpense(id);
+      }
+    }
+  }
+
+  // Адаптивный размер шрифта
+  double _adaptiveFontSize(BuildContext context, double baseSize) {
+    final width = MediaQuery.sizeOf(context).width;
+    if (width < 360) return baseSize * 0.85;
+    if (width > 450) return baseSize * 1.1;
+    return baseSize;
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final incomes = _mediator.incomes;
+    final expenses = _mediator.expenses;
+
+    final List<Map<String, dynamic>> allTransactions = [];
+
+    for (final i in incomes) {
+      allTransactions.add({
+        'isIncome': true,
+        'id': i.id,
+        'amount': i.amount,
+        'description': i.source,
+        'date': i.date,
+        'category': 'Доход',
+      });
+    }
+
+    for (final e in expenses) {
+      allTransactions.add({
+        'isIncome': false,
+        'id': e.id,
+        'amount': e.amount,
+        'description': e.description,
+        'date': e.date,
+        'category': e.category,
+      });
+    }
+
+    allTransactions.sort((a, b) => (b['date'] as int).compareTo(a['date'] as int));
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('История'),
@@ -213,7 +310,121 @@ class HistoryPage extends StatelessWidget {
         foregroundColor: Colors.black,
         elevation: 0,
       ),
-      body: const Center(child: Text('Список операций')),
+      body: _mediator.loading
+          ? const Center(child: CircularProgressIndicator())
+          : allTransactions.isEmpty
+          ? const Center(
+        child: Text(
+          'Нет операций за этот месяц',
+          style: TextStyle(fontSize: 16, color: Colors.grey),
+        ),
+      )
+          : ListView.builder(
+        padding: const EdgeInsets.all(16),
+        itemCount: allTransactions.length,
+        itemBuilder: (context, index) {
+          final tx = allTransactions[index];
+          final isIncome = tx['isIncome'] as bool;
+          final amount = tx['amount'] as double;
+          final description = tx['description'] as String;
+          final date = tx['date'] as int;
+          final category = tx['category'] as String;
+          final id = tx['id'] as int?;
+
+          final titleSize = _adaptiveFontSize(context, 16.0);
+          final subtitleSize = _adaptiveFontSize(context, 12.0);
+          final amountSize = _adaptiveFontSize(context, 16.0);
+
+          return Card(
+            margin: const EdgeInsets.only(bottom: 12),
+            child: Padding(
+              padding: const EdgeInsets.all(12.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      CircleAvatar(
+                        radius: _adaptiveFontSize(context, 18.0),
+                        backgroundColor: isIncome ? Colors.green[100] : Colors.orange[100],
+                        child: Icon(
+                          isIncome ? Icons.arrow_upward : Icons.arrow_downward,
+                          color: isIncome ? Colors.green[700] : Colors.orange[700],
+                          size: _adaptiveFontSize(context, 20.0),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      // Описание с Flexible
+                      Expanded(
+                        child: Text(
+                          description,
+                          style: TextStyle(
+                            fontWeight: FontWeight.w500,
+                            fontSize: titleSize,
+                          ),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      // Сумма
+                      Text(
+                        '${isIncome ? '+' : '-'}${amount.toStringAsFixed(2)} ₽',
+                        style: TextStyle(
+                          color: isIncome ? Colors.green[700] : Colors.orange[700],
+                          fontWeight: FontWeight.bold,
+                          fontSize: amountSize,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  Row(
+                    children: [
+                      Icon(
+                        Icons.calendar_today,
+                        size: _adaptiveFontSize(context, 14.0),
+                        color: Colors.grey,
+                      ),
+                      const SizedBox(width: 4),
+                      Text(
+                        _formatDate(date),
+                        style: TextStyle(
+                          fontSize: subtitleSize,
+                          color: Colors.grey,
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: Colors.grey[200],
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Text(
+                          category,
+                          style: TextStyle(
+                            fontSize: subtitleSize,
+                            color: Colors.grey[700],
+                          ),
+                        ),
+                      ),
+                      const Spacer(),
+                      if (id != null)
+                        IconButton(
+                          icon: Icon(Icons.delete, color: Colors.red, size: _adaptiveFontSize(context, 20.0)),
+                          onPressed: () => _confirmDelete(context, isIncome, id),
+                          padding: EdgeInsets.zero,
+                          constraints: const BoxConstraints(),
+                        ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          );
+        },
+      ),
     );
   }
 }
