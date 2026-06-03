@@ -1,12 +1,16 @@
 import 'package:flutter/foundation.dart';
-import '../enity/badget_calculator.dart';
-import '../enity/category_classifier.dart';
+import '../entity/category_classifier.dart';
 import '../database/app_database.dart';
+import '../entity/budget_calculator.dart';
 import '../models/budget_data.dart';
 
 class FinanceMediator extends ChangeNotifier {
-  late final AppDatabase _db;
-  late final Future<void> _dbInitFuture;
+  // Singleton
+  static final FinanceMediator _instance = FinanceMediator._internal();
+  factory FinanceMediator() => _instance;
+  FinanceMediator._internal();
+
+  final AppDatabase _db = AppDatabase();
 
   DateTime _selectedMonth = DateTime.now();
   BudgetData _budgetData = BudgetData.empty();
@@ -16,34 +20,26 @@ class FinanceMediator extends ChangeNotifier {
   BudgetData get budgetData => _budgetData;
   bool get loading => _loading;
 
-  FinanceMediator() {
-    _dbInitFuture = _initDb();
-  }
-
-  Future<void> _initDb() async {
-    _db = await AppDatabase.instance;
-  }
-
-  Future<void> _ensureDb() async {
-    await _dbInitFuture;
-  }
-
+  /// Загрузить (пересчитать) данные за конкретный месяц
   Future<void> loadMonth(DateTime month) async {
-    await _ensureDb();
     _selectedMonth = DateTime(month.year, month.month, 1);
     _loading = true;
     notifyListeners();
 
     try {
+      // Доходы за месяц
       final incomes = await _db.getIncomes();
       final monthlyIncomes = incomes.where((i) {
         final d = DateTime.fromMillisecondsSinceEpoch(i.date);
         return d.year == _selectedMonth.year && d.month == _selectedMonth.month;
       });
-      final totalIncome = monthlyIncomes.fold(0.0, (sum, i) => sum + i.amount);
+      final totalIncome =
+      monthlyIncomes.fold<double>(0.0, (sum, i) => sum + i.amount);
 
+      // Лимиты 50/30/20
       final limits = BudgetCalculator.calculateLimits(totalIncome);
 
+      // Расходы за месяц
       final expenses = await _db.getExpenses();
       final monthlyExpenses = expenses.where((e) {
         final d = DateTime.fromMillisecondsSinceEpoch(e.date);
@@ -60,7 +56,8 @@ class FinanceMediator extends ChangeNotifier {
       }
 
       _budgetData = BudgetData(spent: spent, limits: limits);
-    } catch (_) {
+    } catch (e) {
+      debugPrint('Ошибка загрузки данных: $e');
       _budgetData = BudgetData.empty();
     } finally {
       _loading = false;
@@ -68,8 +65,8 @@ class FinanceMediator extends ChangeNotifier {
     }
   }
 
+  /// Добавить доход
   Future<void> addIncome(double amount, String source) async {
-    await _ensureDb();
     final income = Income(
       amount: amount,
       source: source,
@@ -79,8 +76,8 @@ class FinanceMediator extends ChangeNotifier {
     await loadMonth(_selectedMonth);
   }
 
+  /// Добавить расход
   Future<void> addExpense(double amount, String description) async {
-    await _ensureDb();
     final category = getCategoryFromDescription(description);
     final expense = Expense(
       amount: amount,
@@ -92,14 +89,14 @@ class FinanceMediator extends ChangeNotifier {
     await loadMonth(_selectedMonth);
   }
 
+  /// Удалить доход
   Future<void> deleteIncome(int id) async {
-    await _ensureDb();
     await _db.deleteIncome(id);
     await loadMonth(_selectedMonth);
   }
 
+  /// Удалить расход
   Future<void> deleteExpense(int id) async {
-    await _ensureDb();
     await _db.deleteExpense(id);
     await loadMonth(_selectedMonth);
   }

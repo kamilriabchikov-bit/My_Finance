@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:my_finance/mediator/finance_mediator.dart';
+import '../mediator/finance_mediator.dart';
 
 class TransactionDialog extends StatefulWidget {
   final bool isIncome;
@@ -23,21 +23,25 @@ class _TransactionDialogState extends State<TransactionDialog> {
   void _onSubmit(BuildContext context) async {
     final amountText = _amountController.text.trim();
     final description = _descriptionController.text.trim();
+
     if (amountText.isEmpty || description.isEmpty) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('Заполните все поля')));
-      return;
-    }
-    final amount = double.tryParse(amountText);
-    if (amount == null || amount <= 0) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('Введите корректную сумму')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Заполните все поля')),
+      );
       return;
     }
 
+    final amount = double.tryParse(amountText);
+    if (amount == null || amount <= 0) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Введите корректную сумму')),
+      );
+      return;
+    }
+
+    // Используем singleton-экземпляр медиатора
     final mediator = FinanceMediator();
+
     if (widget.isIncome) {
       await mediator.addIncome(amount, description);
     } else {
@@ -46,6 +50,7 @@ class _TransactionDialogState extends State<TransactionDialog> {
 
     if (!mounted) return;
     Navigator.of(context).pop();
+
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(widget.isIncome ? 'Доход добавлен' : 'Расход добавлен'),
@@ -60,6 +65,7 @@ class _TransactionDialogState extends State<TransactionDialog> {
     final hint = widget.isIncome
         ? 'Источник (зарплата...)'
         : 'Описание (кино, цирк...)';
+
     return AlertDialog(
       title: Text(title),
       content: SizedBox(

@@ -1,12 +1,13 @@
-// lib/main.dart
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:intl/date_symbol_data_local.dart';
 
+import 'database/app_database.dart';
+import 'mediator/finance_mediator.dart';
 import 'widgets/category_card.dart';
 import 'widgets/transaction_dialog.dart';
 
-//  ГЛАВНАЯ СТРАНИЦА
+// ГЛАВНАЯ СТРАНИЦА
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
 
@@ -15,8 +16,24 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> {
-  // Текущий месяц/год (по умолчанию — текущий)
-  DateTime _currentDate = DateTime.now();
+  final FinanceMediator _mediator = FinanceMediator();
+
+  @override
+  void initState() {
+    super.initState();
+    _mediator.loadMonth(_mediator.selectedMonth);
+    _mediator.addListener(_onMediatorChanged);
+  }
+
+  @override
+  void dispose() {
+    _mediator.removeListener(_onMediatorChanged);
+    super.dispose();
+  }
+
+  void _onMediatorChanged() {
+    if (mounted) setState(() {});
+  }
 
   // Форматирование с заглавной буквы
   String _formatMonthYear(DateTime date) {
@@ -28,14 +45,14 @@ class _HomePageState extends State<HomePage> {
   Future<void> _selectMonth(BuildContext context) async {
     final DateTime? picked = await showDatePicker(
       context: context,
-      initialDate: _currentDate,
+      initialDate: _mediator.selectedMonth,
       firstDate: DateTime(2020),
       lastDate: DateTime(2030),
       builder: (context, child) {
         return Theme(
           data: Theme.of(context).copyWith(
             colorScheme: ColorScheme.light(
-              primary: Colors.blue, // цвет акцента
+              primary: Colors.blue,
             ),
           ),
           child: child!,
@@ -43,21 +60,19 @@ class _HomePageState extends State<HomePage> {
       },
     );
 
-    if (picked != null && picked != _currentDate) {
-      // Обновляем только месяц и год, день не важен
-      setState(() {
-        _currentDate = DateTime(picked.year, picked.month, 1);
-      });
+    if (picked != null && picked != _mediator.selectedMonth) {
+      _mediator.loadMonth(DateTime(picked.year, picked.month, 1));
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    final monthName = _formatMonthYear(_currentDate);
-
+    final monthName = _formatMonthYear(_mediator.selectedMonth);
     final width = MediaQuery.sizeOf(context).width;
     final buttonSize = (width * 0.15).clamp(50.0, 70.0);
     final spacing = 16.0;
+
+    final budget = _mediator.budgetData;
 
     return Scaffold(
       appBar: AppBar(
@@ -90,27 +105,26 @@ class _HomePageState extends State<HomePage> {
                     children: [
                       CategoryCard(
                         category: 'Обязательные',
-                        spent: 50000,
-                        limit: 50000,
+                        spent: budget.spent['Обязательные'] ?? 0.0,
+                        limit: budget.limits['Обязательные'] ?? 0.0,
                       ),
                       const SizedBox(height: 16),
                       CategoryCard(
                         category: 'Развлечения',
-                        spent: 18000,
-                        limit: 30000,
+                        spent: budget.spent['Развлечения'] ?? 0.0,
+                        limit: budget.limits['Развлечения'] ?? 0.0,
                       ),
                       const SizedBox(height: 16),
                       CategoryCard(
                         category: 'Накопления',
-                        spent: 5000,
-                        limit: 20000,
+                        spent: budget.spent['Накопления'] ?? 0.0,
+                        limit: budget.limits['Накопления'] ?? 0.0,
                       ),
                       const SizedBox(height: 100),
                     ],
                   ),
                 ),
               ),
-
               // Кнопки
               Positioned(
                 right: spacing,
@@ -119,14 +133,10 @@ class _HomePageState extends State<HomePage> {
                   children: [
                     GestureDetector(
                       onTap: () async {
-                        final result = await showDialog(
+                        await showDialog(
                           context: context,
-                          builder: (ctx) =>
-                              const TransactionDialog(isIncome: true),
+                          builder: (ctx) => const TransactionDialog(isIncome: true),
                         );
-                        if (result != null) {
-                          print('Доход: $result');
-                        }
                       },
                       child: Container(
                         width: buttonSize,
@@ -152,14 +162,10 @@ class _HomePageState extends State<HomePage> {
                     const SizedBox(width: 12),
                     GestureDetector(
                       onTap: () async {
-                        final result = await showDialog(
+                        await showDialog(
                           context: context,
-                          builder: (ctx) =>
-                              const TransactionDialog(isIncome: false),
+                          builder: (ctx) => const TransactionDialog(isIncome: false),
                         );
-                        if (result != null) {
-                          print('Расход: $result');
-                        }
                       },
                       child: Container(
                         width: buttonSize,
@@ -222,8 +228,7 @@ class MainScreen extends StatefulWidget {
 
 class _MainScreenState extends State<MainScreen> {
   int _selectedIndex = 0;
-
-  final List<Widget> _pages = [const HomePage(), const HistoryPage()];
+  final List<Widget> _pages = const [HomePage(), HistoryPage()];
 
   void _onItemTapped(int index) {
     setState(() {
@@ -250,10 +255,14 @@ class _MainScreenState extends State<MainScreen> {
   }
 }
 
-//  ОСНОВНОЕ ПРИЛОЖЕНИЕ
+// ОСНОВНОЕ ПРИЛОЖЕНИЕ
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await initializeDateFormatting('ru_RU', null); //  Инициализация локали
+  await initializeDateFormatting('ru_RU', null);
+
+  // Инициализация базы данных
+  await AppDatabase().init();
+
   runApp(const FinanceApp());
 }
 
@@ -265,7 +274,7 @@ class FinanceApp extends StatelessWidget {
     return MaterialApp(
       title: 'Finance Tracker',
       theme: ThemeData(useMaterial3: true),
-      home: const MainScreen(), //
+      home: const MainScreen(),
     );
   }
 }

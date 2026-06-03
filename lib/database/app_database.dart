@@ -15,7 +15,7 @@ class Income {
     required this.date,
   });
 
-  Map<String, dynamic> toMap() => {
+  Map<String, Object?> toMap() => {
     'id': id,
     'amount': amount,
     'source': source,
@@ -23,10 +23,10 @@ class Income {
   };
 
   factory Income.fromMap(Map<String, dynamic> map) => Income(
-    id: map['id'],
-    amount: map['amount'],
-    source: map['source'],
-    date: map['date'],
+    id: map['id'] as int?,
+    amount: (map['amount'] as num).toDouble(),
+    source: map['source'] as String,
+    date: map['date'] as int,
   );
 }
 
@@ -45,7 +45,7 @@ class Expense {
     required this.date,
   });
 
-  Map<String, dynamic> toMap() => {
+  Map<String, Object?> toMap() => {
     'id': id,
     'amount': amount,
     'description': description,
@@ -54,34 +54,27 @@ class Expense {
   };
 
   factory Expense.fromMap(Map<String, dynamic> map) => Expense(
-    id: map['id'],
-    amount: map['amount'],
-    description: map['description'],
-    category: map['category'],
-    date: map['date'],
+    id: map['id'] as int?,
+    amount: (map['amount'] as num).toDouble(),
+    description: map['description'] as String,
+    category: map['category'] as String,
+    date: map['date'] as int,
   );
 }
 
+// База данных (Singleton)
 class AppDatabase {
   static final AppDatabase _instance = AppDatabase._internal();
+  static Database? _db;
 
-  static Future<AppDatabase> get instance async {
-    await _instance._init();
-    return _instance;
-  }
-
-  late Database _db;
-  bool _isInitialized = false;
-
+  factory AppDatabase() => _instance;
   AppDatabase._internal();
 
+  Future<void> init() async {
+    if (_db != null) return; // Уже инициализирована
 
-  Future<void> _init() async {
-    if (_isInitialized) return;
-
-    final dbPath = await getDatabasesPath();
-    final path = join(dbPath, 'my_finance.db');
-
+    final databasesPath = await getDatabasesPath();
+    final path = join(databasesPath, 'finance_app.db');
     _db = await openDatabase(
       path,
       version: 1,
@@ -105,53 +98,40 @@ class AppDatabase {
         ''');
       },
     );
-    _isInitialized = true;
   }
 
-  // Доходы
-  Future<int> insertIncome(Income income) async {
-    await _ensureInitialized();
-    return _db.insert('income', income.toMap());
+  Database get db {
+    if (_db == null) {
+      throw StateError('База данных не инициализирована. Вызовите init() primero.');
+    }
+    return _db!;
   }
+
+  // === Доходы ===
+  Future<int> insertIncome(Income income) => db.insert('income', income.toMap());
 
   Future<List<Income>> getIncomes() async {
-    await _ensureInitialized();
-    final List<Map<String, dynamic>> maps = await _db.query('income');
+    final List<Map<String, dynamic>> maps = await db.query('income');
     return List.generate(maps.length, (i) => Income.fromMap(maps[i]));
   }
 
-  Future<void> deleteIncome(int id) async {
-    await _ensureInitialized();
-    await _db.delete('income', where: 'id = ?', whereArgs: [id]);
-  }
+  Future<int> deleteIncome(int id) =>
+      db.delete('income', where: 'id = ?', whereArgs: [id]);
 
-  // Расходы
-  Future<int> insertExpense(Expense expense) async {
-    await _ensureInitialized();
-    return _db.insert('expense', expense.toMap());
-  }
+  // === Расходы ===
+  Future<int> insertExpense(Expense expense) =>
+      db.insert('expense', expense.toMap());
 
   Future<List<Expense>> getExpenses() async {
-    await _ensureInitialized();
-    final List<Map<String, dynamic>> maps = await _db.query('expense');
+    final List<Map<String, dynamic>> maps = await db.query('expense');
     return List.generate(maps.length, (i) => Expense.fromMap(maps[i]));
   }
 
-  Future<void> deleteExpense(int id) async {
-    await _ensureInitialized();
-    await _db.delete('expense', where: 'id = ?', whereArgs: [id]);
-  }
-
-  Future<void> _ensureInitialized() async {
-    if (!_isInitialized) {
-      await _init();
-    }
-  }
+  Future<int> deleteExpense(int id) =>
+      db.delete('expense', where: 'id = ?', whereArgs: [id]);
 
   Future<void> close() async {
-    if (_isInitialized) {
-      await _db.close();
-      _isInitialized = false;
-    }
+    await _db?.close();
+    _db = null;
   }
 }

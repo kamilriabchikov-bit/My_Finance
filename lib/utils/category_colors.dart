@@ -2,11 +2,11 @@ import 'package:flutter/material.dart';
 
 Color getCategoryColor(String category) {
   switch (category) {
-    case 'Mogu':
+    case 'Обязательные':
       return Colors.blue;
-    case 'Hochu':
+    case 'Развлечения':
       return Colors.orange;
-    case 'Nado':
+    case 'Накопления':
       return Colors.green;
     default:
       return Colors.grey;
